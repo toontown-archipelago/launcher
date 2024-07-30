@@ -106,7 +106,7 @@ class Ui_launcher(object):
 "color: rgb(0, 0, 0);")
         self.pushButton_Settings = QPushButton(self.centralwidget)
         self.pushButton_Settings.setObjectName(u"pushButton_Settings")
-        self.pushButton_Settings.setGeometry(QRect(20, 410, 21, 32))
+        self.pushButton_Settings.setGeometry(QRect(20, 380, 31, 31))
         self.pushButton_Settings.setFont(font1)
         self.pushButton_Settings.setStyleSheet(u"color: rgb(0, 0, 0);\n"
 "border: 2px solid black;\n"
@@ -129,11 +129,11 @@ class Ui_launcher(object):
         self.pushButton_startAll.setStyleSheet(u"color: rgb(0, 0, 0);\n"
 "border: 2px solid black;\n"
 "border-radius: 5px;")
-        self.rememberMecheckBox = QCheckBox(self.centralwidget)
-        self.rememberMecheckBox.setObjectName(u"rememberMecheckBox")
-        self.rememberMecheckBox.setGeometry(QRect(320, 430, 121, 20))
-        self.rememberMecheckBox.setFont(font1)
-        self.rememberMecheckBox.setStyleSheet(u"color: rgb(0, 0, 0);\n"
+        self.rememberMeCheckBox = QCheckBox(self.centralwidget)
+        self.rememberMeCheckBox.setObjectName(u"rememberMeCheckBox")
+        self.rememberMeCheckBox.setGeometry(QRect(320, 430, 121, 20))
+        self.rememberMeCheckBox.setFont(font1)
+        self.rememberMeCheckBox.setStyleSheet(u"color: rgb(0, 0, 0);\n"
 "")
         self.minusButton = QPushButton(self.centralwidget)
         self.minusButton.setObjectName(u"minusButton")
@@ -151,6 +151,9 @@ class Ui_launcher(object):
         self.downloadLabel.setGeometry(QRect(70, 350, 531, 16))
         self.downloadLabel.setFont(font3)
         self.downloadLabel.setStyleSheet(u"color: rgb(0, 0, 0);")
+        self.prereleasesCheckBox = QCheckBox(self.centralwidget)
+        self.prereleasesCheckBox.setObjectName(u"prereleasesCheckBox")
+        self.prereleasesCheckBox.setGeometry(QRect(20, 420, 101, 20))
         launcher.setCentralWidget(self.centralwidget)
         self.graphicsView.raise_()
         self.releaseNotesText.raise_()
@@ -164,13 +167,14 @@ class Ui_launcher(object):
         self.pushButton_Settings.raise_()
         self.pushButton_connect.raise_()
         self.pushButton_startAll.raise_()
-        self.rememberMecheckBox.raise_()
+        self.rememberMeCheckBox.raise_()
         self.minusButton.raise_()
         self.closeButton.raise_()
         self.downloadLabel.raise_()
+        self.prereleasesCheckBox.raise_()
         self.menubar = QMenuBar(launcher)
         self.menubar.setObjectName(u"menubar")
-        self.menubar.setGeometry(QRect(0, 0, 800, 37))
+        self.menubar.setGeometry(QRect(0, 0, 800, 22))
         launcher.setMenuBar(self.menubar)
         self.statusbar = QStatusBar(launcher)
         self.statusbar.setObjectName(u"statusbar")
@@ -189,7 +193,7 @@ class Ui_launcher(object):
 "hr { height: 1px; border-width: 0; }\n"
 "li.unchecked::marker { content: \"\\2610\"; }\n"
 "li.checked::marker { content: \"\\2612\"; }\n"
-"</style></head><body style=\" font-family:'Arial'; font-size:13pt; font-weight:400; font-style:normal;\">\n"
+"</style></head><body style=\" font-family:'Arial'; font-size:9pt; font-weight:400; font-style:normal;\">\n"
 "<p align=\"center\" style=\" margin-top:12px; margin-bottom:12px; margin-left:0px; margin-right:0px; -qt-block-indent:0; text-indent:0px;\"><span style=\" font-family:'.TimesNewRoman'; font-size:18pt;\">Release Notes</span></p>\n"
 "<p style=\" margin-top:12px; margin-bottom:12px; margin-left:0px; margin-right:0px; -qt-block-indent:0; text-indent:0px;\"><span style=\" font-family:'.TimesNewRoman'; font-size:12pt;\">Coming Soon</span></p></body></html>", None))
         self.releasesComboBox.setPlaceholderText(QCoreApplication.translate("launcher", u"V0.0", None))
@@ -201,9 +205,10 @@ class Ui_launcher(object):
         self.pushButton_Settings.setText("")
         self.pushButton_connect.setText(QCoreApplication.translate("launcher", u"Connect with User/IP", None))
         self.pushButton_startAll.setText(QCoreApplication.translate("launcher", u"Start All (Solo/Offline)", None))
-        self.rememberMecheckBox.setText(QCoreApplication.translate("launcher", u"Remember Me", None))
+        self.rememberMeCheckBox.setText(QCoreApplication.translate("launcher", u"Remember Me", None))
         self.minusButton.setText("")
         self.closeButton.setText("")
         self.downloadLabel.setText(QCoreApplication.translate("launcher", u"Downloading: ", None))
+        self.prereleasesCheckBox.setText(QCoreApplication.translate("launcher", u"Prereleases", None))
     # retranslateUi
 
