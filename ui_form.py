@@ -174,7 +174,7 @@ class Ui_launcher(object):
         self.prereleasesCheckBox.raise_()
         self.menubar = QMenuBar(launcher)
         self.menubar.setObjectName(u"menubar")
-        self.menubar.setGeometry(QRect(0, 0, 800, 22))
+        self.menubar.setGeometry(QRect(0, 0, 800, 37))
         launcher.setMenuBar(self.menubar)
         self.statusbar = QStatusBar(launcher)
         self.statusbar.setObjectName(u"statusbar")
@@ -193,9 +193,9 @@ class Ui_launcher(object):
 "hr { height: 1px; border-width: 0; }\n"
 "li.unchecked::marker { content: \"\\2610\"; }\n"
 "li.checked::marker { content: \"\\2612\"; }\n"
-"</style></head><body style=\" font-family:'Arial'; font-size:9pt; font-weight:400; font-style:normal;\">\n"
-"<p align=\"center\" style=\" margin-top:12px; margin-bottom:12px; margin-left:0px; margin-right:0px; -qt-block-indent:0; text-indent:0px;\"><span style=\" font-family:'.TimesNewRoman'; font-size:18pt;\">Release Notes</span></p>\n"
-"<p style=\" margin-top:12px; margin-bottom:12px; margin-left:0px; margin-right:0px; -qt-block-indent:0; text-indent:0px;\"><span style=\" font-family:'.TimesNewRoman'; font-size:12pt;\">Coming Soon</span></p></body></html>", None))
+"</style></head><body style=\" font-family:'Arial'; font-size:13pt; font-weight:400; font-style:normal;\">\n"
+"<p align=\"center\" style=\" margin-top:12px; margin-bottom:12px; margin-left:0px; margin-right:0px; -qt-block-indent:0; text-indent:0px;\"><span style=\" font-family:'TimesNewRoman'; font-size:18pt;\">Release Notes</span></p>\n"
+"<p style=\"-qt-paragraph-type:empty; margin-top:12px; margin-bottom:12px; margin-left:0px; margin-right:0px; -qt-block-indent:0; text-indent:0px;\"><br /></p></body></html>", None))
         self.releasesComboBox.setPlaceholderText(QCoreApplication.translate("launcher", u"V0.0", None))
         self.pushButton_hostServer.setText(QCoreApplication.translate("launcher", u"Host a Server", None))
         self.pushButton_runSettings.setText(QCoreApplication.translate("launcher", u"Open Run Settings", None))

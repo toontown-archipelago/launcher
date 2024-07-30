@@ -162,7 +162,7 @@ class launcher(QMainWindow):
 
     def runClient(self):
         self.savePrefs()
-        chdir(self.gameDirectory)
+        chdir(f'{self.gameDirectory}/game')
         if platform == 'darwin':
             modes = Path('launch').stat().st_mode
             if not modes & stat.S_IXUSR:
@@ -211,7 +211,7 @@ class launcher(QMainWindow):
         for release in data:
             releases[release.get('tag_name')] = release
             assets = release.get('assets', [])
-            if next((item for item in assets if item.get('name') == ZIP_NAME)) is not None:
+            if any((item for item in assets if item.get('name') == ZIP_NAME)) is not None:
                 releases.update({release.get('tag_name'): release})
         return releases
 
@@ -249,6 +249,8 @@ class launcher(QMainWindow):
 
     def updateProgress(self, value):
         self.ui.downloadLabel.setVisible(True)
+        value_to_name_dict = {0: 'game', 33: 'yaml', 66: 'apworld'}
+        self.ui.downloadLabel.setText(f"Downloading {value_to_name_dict.get(value, 'game')}...")
         self.ui.installprogressBar.setVisible(True)
         self.ui.installprogressBar.setValue(value)
 
