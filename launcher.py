@@ -31,31 +31,22 @@ else:
 
 
 class DownloadThread(QThread):
-    progress = Signal(int)
+    progress = Signal(int,str)
     finished = Signal()
-    def __init__(self, asset_game, asset_yaml, asset_apworld, gameDirectory):
+    def __init__(self, assets, gameDirectory):
         super().__init__()
-        self.asset_game = asset_game
-        self.asset_yaml = asset_yaml
-        self.asset_apworld = asset_apworld
+        self.assets = assets
         self.gameDirectory = gameDirectory
 
     def run(self):
-        self.download_files(self.asset_game, self.asset_yaml, self.asset_apworld)
+        self.download_files(self.assets)
         self.finished.emit()
 
-    def download_files(self, asset_game, asset_yaml, asset_apworld):
-        # Download the first file
-        self.downloadFile(asset_game)
-        self.progress.emit(33)
-
-        # Download the second file
-        self.downloadFile(asset_yaml)
-        self.progress.emit(66)
-
-        # Download the third file
-        self.downloadFile(asset_apworld)
-        self.progress.emit(100)
+    def download_files(self, assets):
+        self.gameDirectory.mkdir(exist_ok=True) #ensure directory exists, game isn't necessarily the first.
+        for k,v in enumerate(assets):
+            self.progress.emit(int(k/len(assets)*100), v.get('name'))
+            self.downloadFile(v)
 
     def downloadFile(self, asset):
         # download the file
@@ -67,7 +58,7 @@ class DownloadThread(QThread):
                 archive.extractall(self.gameDirectory)
         else:
             # save the file
-            with Path(self.gameDirectory, asset['name']).open('wb') as file:
+            with Path(self.gameDirectory, asset.get('name')).open('wb') as file:
                 file.write(response.content)
 
 class launcher(QMainWindow):
@@ -127,7 +118,7 @@ class launcher(QMainWindow):
         prefs['remember'] = prefs.get('remember', False)
         prefs['username'] = prefs.get('username', 'player1')
         prefs['serverIP'] = prefs.get('serverIP', '127.0.0.1')
-        prefs['prereleases'] = prefs.get('prereleases', False) 
+        prefs['prereleases'] = prefs.get('prereleases', False)
         self.ui.rememberMeCheckBox.setChecked(prefs.get('remember'))
         self.ui.prereleasesCheckBox.setChecked(prefs.get('prereleases'))
         if prefs.get('remember'):
@@ -162,7 +153,7 @@ class launcher(QMainWindow):
 
     def runClient(self):
         self.savePrefs()
-        chdir(f'{self.gameDirectory}/game')
+        chdir(self.gameDirectory/'game')
         if platform == 'darwin':
             modes = Path('launch').stat().st_mode
             if not modes & stat.S_IXUSR:
@@ -211,7 +202,7 @@ class launcher(QMainWindow):
         for release in data:
             releases[release.get('tag_name')] = release
             assets = release.get('assets', [])
-            if any((item for item in assets if item.get('name') == ZIP_NAME)) is not None:
+            if any(item.get('name') == ZIP_NAME for item in assets):
                 releases.update({release.get('tag_name'): release})
         return releases
 
@@ -221,7 +212,7 @@ class launcher(QMainWindow):
         self.downloadRelease()
 
     def writeReleaseNotes(self):
-        for _,v in self.releases.items():
+        for v in self.releases.values():
             self.ui.releaseNotesText.append(v['name'] + '\n')
             self.ui.releaseNotesText.append(v['body'])
 
@@ -232,25 +223,30 @@ class launcher(QMainWindow):
         self.setGameDirectory()
         if Path(self.gameDirectory,'game').exists() or self.releaseSelected == "":
             return
-        asset = next((item for item in self.releases.get(self.releaseSelected, {}).get('assets', []) if item['name'] == ZIP_NAME), None)
-
-        asset_yaml = next((item for item in self.releases.get(self.releaseSelected, {}).get('assets', []) if item['name'].endswith('.yaml')), None)
-        asset_apworld = next((item for item in self.releases.get(self.releaseSelected, {}).get('assets', []) if item['name'].endswith('.apworld')), None)
-        if None in [asset, asset_yaml, asset_apworld]:
-            print(f"Error trying to download {self.releaseSelected}: an asset is missing from the release.")
+        assets = list(
+                      item for item in self.releases.get(self.releaseSelected, {}).get('assets', [])
+                      if any([item['name'] == ZIP_NAME,
+                          item['name'].endswith('.yaml'),
+                          item['name'].endswith('.apworld')
+                      ])
+                     )
+        if len(assets) < 3:
+            print(f"Error trying to download {self.releaseSelected}: an asset is missing from the release")
+            return
+        elif len(assets) > 3:
+            print(f"Error trying to download {self.releaseSelected}: There are too many assets. (This probably shouldn't happen.)")
             return
         self.updateProgress(0)
-        self.download_thread = DownloadThread(asset, asset_yaml, asset_apworld, self.gameDirectory)
+        self.download_thread = DownloadThread(assets, self.gameDirectory)
         self.download_thread.progress.connect(self.updateProgress)
         self.download_thread.finished.connect(self.onDownloadFinished)
         self.download_thread.start()
 
 
 
-    def updateProgress(self, value):
+    def updateProgress(self, value, asset_name='game'):
         self.ui.downloadLabel.setVisible(True)
-        value_to_name_dict = {0: 'game', 33: 'yaml', 66: 'apworld'}
-        self.ui.downloadLabel.setText(f"Downloading {value_to_name_dict.get(value, 'game')}...")
+        self.ui.downloadLabel.setText(f"Downloading {asset_name}...")
         self.ui.installprogressBar.setVisible(True)
         self.ui.installprogressBar.setValue(value)
 
