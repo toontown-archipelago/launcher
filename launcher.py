@@ -62,7 +62,7 @@ class DownloadThread(QThread):
         response = requests.get(asset.get('browser_download_url'), stream=True, timeout=10)
         response.raise_for_status()
         # if file is a zip extract it
-        if asset['name'].endswith(".zip"):
+        if asset['name'].endswith('.zip'):
             with zipfile.ZipFile(io.BytesIO(response.content)) as archive:
                 archive.extractall(self.gameDirectory)
         else:
@@ -118,16 +118,16 @@ class launcher(QMainWindow):
 
     def loadPrefs(self):
         try:
-            with Path(GAME_DIRECTORY, "prefs.json").open('r', encoding='utf-8') as file:
+            with Path(GAME_DIRECTORY, 'prefs.json').open('r', encoding='utf-8') as file:
                 prefs = json.load(file)
         except OSError:
             print("preferences could not be loaded.\nIf this is the first time running, this can be ignored.")
             prefs = {}
         #adds default values if missing, otherwise does nothing.
         prefs['remember'] = prefs.get('remember', False)
-        prefs["username"] = prefs.get('username', 'player1')
-        prefs["serverIP"] = prefs.get('serverIP', '127.0.0.1')
-        prefs["prereleases"] = prefs.get('prereleases', False) 
+        prefs['username'] = prefs.get('username', 'player1')
+        prefs['serverIP'] = prefs.get('serverIP', '127.0.0.1')
+        prefs['prereleases'] = prefs.get('prereleases', False) 
         self.ui.rememberMeCheckBox.setChecked(prefs.get('remember'))
         self.ui.prereleasesCheckBox.setChecked(prefs.get('prereleases'))
         if prefs.get('remember'):
@@ -139,9 +139,9 @@ class launcher(QMainWindow):
         self.prefs['remember'] = self.ui.rememberMeCheckBox.isChecked()
         self.prefs['prereleases'] = self.ui.prereleasesCheckBox.isChecked()
         if self.prefs.get('remember'):
-            self.prefs["username"] = self.ui.lineEdit_username.text()
-            self.prefs["serverIP"] = self.ui.lineEdit_ipAddress.text()
-        with Path(GAME_DIRECTORY, "prefs.json").open('w', encoding='utf-8') as file:
+            self.prefs['username'] = self.ui.lineEdit_username.text()
+            self.prefs['serverIP'] = self.ui.lineEdit_ipAddress.text()
+        with Path(GAME_DIRECTORY, 'prefs.json').open('w', encoding='utf-8') as file:
             json.dump(self.prefs, file)
 
     def updateComboBox(self):
@@ -149,7 +149,7 @@ class launcher(QMainWindow):
         if self.ui.prereleasesCheckBox.isChecked():
             self.ui.releasesComboBox.addItems(self.releases.keys())
         else:
-            releases = {k:v for k,v in self.releases.items() if not v["prerelease"]}
+            releases = {k:v for k,v in self.releases.items() if not v['prerelease']}
             self.ui.releasesComboBox.addItems(releases)
         # choose the latest release by default
         self.ui.releasesComboBox.setCurrentIndex(0)
@@ -204,15 +204,15 @@ class launcher(QMainWindow):
     # make the list of releases based on the https://github.com/toontown-archipelago/toontown-archipelago/releases API
     def getReleases(self):
         url = "https://api.github.com/repos/toontown-archipelago/toontown-archipelago/releases"
-        query = {"per_page": 100} #TODO: setup pagination, before we hit 100 releases.
+        query = {'per_page': 100} #TODO: setup pagination, before we hit 100 releases.
         response = requests.get(url, query, timeout=10)
         data = response.json()
         releases = {}
         for release in data:
-            releases[release["tag_name"]] = release
+            releases[release.get('tag_name')] = release
             assets = release.get('assets', [])
-            if next((item for item in assets if item['name'] == ZIP_NAME)) is not None:
-                releases.update({release["tag_name"]: release})
+            if next((item for item in assets if item.get('name') == ZIP_NAME)) is not None:
+                releases.update({release.get('tag_name'): release})
         return releases
 
     def releaseChanged(self):
@@ -222,20 +222,20 @@ class launcher(QMainWindow):
 
     def writeReleaseNotes(self):
         for _,v in self.releases.items():
-            self.ui.releaseNotesText.append(v["name"] + '\n')
-            self.ui.releaseNotesText.append(v["body"])
+            self.ui.releaseNotesText.append(v['name'] + '\n')
+            self.ui.releaseNotesText.append(v['body'])
 
     def setGameDirectory(self):
         self.gameDirectory = Path(GAME_DIRECTORY / self.releaseSelected)
 
     def downloadRelease(self):
         self.setGameDirectory()
-        if Path(self.gameDirectory,'game').exists() or Path(self.gameDirectory,'release').exists() or self.releaseSelected == "":
+        if Path(self.gameDirectory,'game').exists() or self.releaseSelected == "":
             return
         asset = next((item for item in self.releases.get(self.releaseSelected, {}).get('assets', []) if item['name'] == ZIP_NAME), None)
 
-        asset_yaml = next((item for item in self.releases.get(self.releaseSelected, {}).get("assets", []) if item['name'].endswith(".yaml")), None)
-        asset_apworld = next((item for item in self.releases.get(self.releaseSelected, {}).get("assets", []) if item['name'].endswith('.apworld')), None)
+        asset_yaml = next((item for item in self.releases.get(self.releaseSelected, {}).get('assets', []) if item['name'].endswith('.yaml')), None)
+        asset_apworld = next((item for item in self.releases.get(self.releaseSelected, {}).get('assets', []) if item['name'].endswith('.apworld')), None)
         if None in [asset, asset_yaml, asset_apworld]:
             print(f"Error trying to download {self.releaseSelected}: an asset is missing from the release.")
             return
@@ -255,6 +255,10 @@ class launcher(QMainWindow):
     def onDownloadFinished(self):
         self.ui.downloadLabel.setVisible(False)
         self.ui.installprogressBar.setVisible(False)
+        if Path(self.gameDirectory, 'release').exists():
+            for file in self.gameDirectory.glob('release/*'):
+                file.rename(self.gameDirectory/file.name)
+            Path(self.gameDirectory,'release').rmdir()
         self.setGameDirectory()
 
 
