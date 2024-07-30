@@ -1,0 +1,8 @@
+<RCC>
+    <qresource prefix="/">
+        <file>resources/cog-svgrepo-com.svg</file>
+        <file>resources/750x500_bg1.png</file>
+        <file>resources/close.png</file>
+        <file>resources/minus.png</file>
+    </qresource>
+</RCC>
