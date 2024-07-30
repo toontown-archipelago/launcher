@@ -230,7 +230,7 @@ class launcher(QMainWindow):
 
     def downloadRelease(self):
         self.setGameDirectory()
-        if Path(self.gameDirectory,'game').exists() or Path(self.gameDirectory,'release') or self.releaseSelected == "":
+        if Path(self.gameDirectory,'game').exists() or Path(self.gameDirectory,'release').exists() or self.releaseSelected == "":
             return
         asset = next((item for item in self.releases.get(self.releaseSelected, {}).get('assets', []) if item['name'] == ZIP_NAME), None)
 
