@@ -58,3 +58,4 @@ coverage.xml
 # venv
 .qtcreator/
 *.user
+*.log

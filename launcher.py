@@ -1,8 +1,9 @@
 # This Python file uses the following encoding: utf-8
 from sys import platform, argv, exit as sys_exit
+from contextlib import redirect_stdout
 import platform as platform_module
 from pathlib import Path
-from os import environ, chdir
+from os import environ, chdir, path, pardir
 from itertools import count
 import zipfile
 import io
@@ -31,6 +32,7 @@ if platform == 'darwin':
 else:
     ZIP_NAME = 'TTAP.zip'
 
+ROOT_DIRECTORY = path.dirname(path.abspath(__file__))
 
 class DownloadThread(QThread):
     progress = Signal(int,str)
@@ -93,6 +95,17 @@ class launcher(QMainWindow):
         self.subprocesses = []
         self.server_processes = {'uberdog': None, 'astron': None, 'AI': None}
         self.done_pre_run = False
+        # initialize a log file for the launcher itself
+        # log directory is either the root or if on mac it will be in the the folder before / Resources
+        self.logDirectory = ROOT_DIRECTORY
+        if platform == 'darwin':
+            # get the parent of the ROOT_DIRECTORY
+            parent_dir = Path(ROOT_DIRECTORY).parent
+            if (parent_dir / 'Resources').exists():
+                self.logDirectory = parent_dir / 'Resources'
+        self.logPath = Path(self.logDirectory + '/launcher.log')
+        with self.logPath.open('w', encoding='utf-8') as logfile:
+            logfile.write(f"Launcher started at {datetime.datetime.now().strftime('%Y-%m-%d %H:%M:%S')}\n")
 
 
     # events to allow dragging of window
@@ -374,4 +387,10 @@ if __name__ == "__main__":
     app = QApplication(argv)
     widget = launcher()
     widget.show()
-    sys_exit(app.exec())
+    # write to log file on crash
+    try:
+        app.exec()
+    except Exception as e:
+        with widget.logPath.open('w', encoding='utf-8') as logfile:
+            logfile.write(str(e))
+        sys_exit(1)
