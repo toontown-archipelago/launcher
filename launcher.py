@@ -86,6 +86,7 @@ class launcher(QMainWindow):
         self.setGameDirectory()
         self.ui.pushButton_hostServer.clicked.connect(self.hostServer)
         self.ui.pushButton_connect.clicked.connect(self.connectToServer)
+        self.ui.pushButton_startAll.clicked.connect(self.startAll)
         self.ui.prereleasesCheckBox.stateChanged.connect(self.updateComboBox)
         self.download_thread = None
         self.offset = None
@@ -148,6 +149,10 @@ class launcher(QMainWindow):
         self.ui.releasesComboBox.setCurrentIndex(0)
         self.releaseSelected = self.ui.releasesComboBox.currentText()
 
+    def startAll(self):
+        self.hostServer()
+        self.connectToServer()
+        
     def hostServer(self):
         # check if we downloaded the release we selected
         self.downloadRelease()
