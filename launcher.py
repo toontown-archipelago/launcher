@@ -8,6 +8,7 @@ from itertools import count
 import zipfile
 import io
 import datetime
+import time
 # import multiprocessing
 import stat
 import subprocess
@@ -192,14 +193,18 @@ class launcher(QMainWindow):
         self.releaseSelected = self.ui.releasesComboBox.currentText()
 
 
-    def pre_run(self):
+    def preRun(self):
         #if we've already done this since the last time the version was changed, there's no need.
         if self.done_pre_run:
             return
         # ensure we've downloaded the selected release.
         self.downloadRelease()
-        if self.download_thread is not None:
-            self.download_thread.wait()
+        # use callback to notify us when the download is complete to execute the rest of the code
+        if self.download_thread:
+            self.download_thread.finished.connect(self.preSetup)
+            return
+      
+    def preSetup(self):
         # macos folder structure didn't match windows, at least up to v0.10.4, ensure compatibility with those versions.
         if (self.gameDirectory/'release').exists():
             for file in self.gameDirectory.glob('release/*'):
@@ -226,7 +231,7 @@ class launcher(QMainWindow):
 
     def hostServer(self):
         # run pre run if necessary
-        self.pre_run()
+        self.preRun()
         self.startServerThreads()
 
     def runClient(self):
@@ -246,7 +251,7 @@ class launcher(QMainWindow):
 
     def connectToServer(self):
         #execute pre run steps, if necessary.
-        self.pre_run()
+        self.preRun()
         # read from lineEdit_ipAddress, and lineEdit_username,
         # default ip : 127.0.0.1
         # default username : player1
@@ -396,7 +401,7 @@ class launcher(QMainWindow):
         self.ui.installprogressBar.setValue(value)
 
     def onDownloadFinished(self):
-        self.ui.downloadLabel.setVisible(False)
+        self.ui.downloadLabel.setText(f"Download complete.")
         self.ui.installprogressBar.setVisible(False)
 
 
