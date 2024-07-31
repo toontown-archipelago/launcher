@@ -193,36 +193,81 @@ class launcher(QMainWindow):
         self.runClient()
 
     def startServerThreads(self):
-        #astron
+        # astron
         chdir(self.gameDirectory / 'game' / 'astron')
-        subprocess.Popen(['astrond', '--loglevel', 'info', 'config/astrond.yml'], creationflags=subprocess.CREATE_NEW_CONSOLE)
+        # print current dir of game directory
+        print(f"Current directory: {Path.cwd()}")
+        # first if we are on a unix system chmod the astrond files
+        if platform != 'win32':
+            # for each file in astron folder
+            for file in Path('.').glob('*'):
+                modes = Path(file).stat().st_mode
+                if not modes & stat.S_IXUSR:
+                    Path(file).chmod(modes | stat.S_IXUSR)
 
-        #uberdog
+        # macos has a different astrond for arm64
+        # check for the arm64 architecture using uname 
+        if platform == 'darwin' and subprocess.check_output(['uname', '-m']).strip() == b'arm64':
+            subprocess.Popen(['./astrond-arm', '--loglevel', 'info', 'config/astrond.yml'], shell=True)
+        elif platform == 'darwin':
+            subprocess.Popen(['./astrond', '--loglevel', 'info', 'config/astrond.yml'], shell=True)
+        else:
+            subprocess.Popen(['astrond', '--loglevel', 'info', 'config/astrond.yml'], creationflags=subprocess.CREATE_NEW_CONSOLE)
+
+        # uberdog
+        # if we are on unix systems then chmod launch
+        if platform != 'win32':
+            modes = Path(self.gameDirectory / 'game' / 'launch').stat().st_mode
+            if not modes & stat.S_IXUSR:
+                Path(self.gameDirectory / 'game' / 'launch').chmod(modes | stat.S_IXUSR)
         chdir(self.gameDirectory / 'game')
         environ['SERVICE_TO_RUN'] = 'UD'
-        subprocess.Popen(['launch',
-                         '--base-channel', '1000000',
-                         '--max-channels', '999999',
-                         '--stateserver', '4002',
-                         '--astron-ip', '127.0.0.1:7199',
-                         '--eventlogger-ip', '127.0.0.1:7197',
-                         'config/common.prc',
-                         'config/production.prc'],
-                         creationflags=subprocess.CREATE_NEW_CONSOLE)
+        if platform == 'win32':
+            subprocess.Popen(['launch',
+                            '--base-channel', '1000000',
+                            '--max-channels', '999999',
+                            '--stateserver', '4002',
+                            '--astron-ip', '127.0.0.1:7199',
+                            '--eventlogger-ip', '127.0.0.1:7197',
+                            'config/common.prc',
+                            'config/production.prc'],
+                            creationflags=subprocess.CREATE_NEW_CONSOLE)
+        elif platform == 'darwin':
+                subprocess.Popen(['./launch',
+                            '--base-channel', '1000000',
+                            '--max-channels', '999999',
+                            '--stateserver', '4002',
+                            '--astron-ip', '127.0.0.1:7199',
+                            '--eventlogger-ip', '127.0.0.1:7197',
+                            'config/common.prc',
+                            'config/production.prc'],
+                            shell=True)
 
         #AI
         chdir(self.gameDirectory / 'game')
         environ['SERVICE_TO_RUN'] = 'AI'
-        subprocess.Popen(['launch',
-                         '--base-channel', '401000000',
-                         '--max-channels', '999999',
-                         '--stateserver', '4002',
-                         '--astron-ip', '127.0.0.1:7199',
-                         '--eventlogger-ip', '127.0.0.1:7197',
-                         '--district-name', 'Archipelago Avenue',
-                         'config/common.prc',
-                         'config/production.prc'],
-                         creationflags=subprocess.CREATE_NEW_CONSOLE)
+        if platform == 'win32':
+            subprocess.Popen(['launch',
+                            '--base-channel', '401000000',
+                            '--max-channels', '999999',
+                            '--stateserver', '4002',
+                            '--astron-ip', '127.0.0.1:7199',
+                            '--eventlogger-ip', '127.0.0.1:7197',
+                            '--district-name', 'Archipelago Avenue',
+                            'config/common.prc',
+                            'config/production.prc'],
+                            creationflags=subprocess.CREATE_NEW_CONSOLE)
+        elif platform == 'darwin':
+            subprocess.Popen(['./launch',
+                            '--base-channel', '401000000',
+                            '--max-channels', '999999',
+                            '--stateserver', '4002',
+                            '--astron-ip', '127.0.0.1:7199',
+                            '--eventlogger-ip', '127.0.0.1:7197',
+                            '--district-name', 'Archipelago Avenue',
+                            'config/common.prc',
+                            'config/production.prc'],
+                            shell=True)
 
 
     # make the list of releases based on the https://github.com/toontown-archipelago/toontown-archipelago/releases API
