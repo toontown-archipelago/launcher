@@ -1,5 +1,6 @@
 # This Python file uses the following encoding: utf-8
 from sys import platform, argv, exit as sys_exit
+import platform as platform_module
 from pathlib import Path
 from os import environ, chdir
 from itertools import count
@@ -194,9 +195,9 @@ class launcher(QMainWindow):
 
     def startServerThreads(self):
         # astron
-        chdir(self.gameDirectory / 'game' / 'astron')
+        astron_dir = self.gameDirectory / 'game' / 'astron'
+        chdir(astron_dir)
         # print current dir of game directory
-        print(f"Current directory: {Path.cwd()}")
         # first if we are on a unix system chmod the astrond files
         if platform != 'win32':
             # for each file in astron folder
@@ -207,12 +208,17 @@ class launcher(QMainWindow):
 
         # macos has a different astrond for arm64
         # check for the arm64 architecture using uname 
-        if platform == 'darwin' and subprocess.check_output(['uname', '-m']).strip() == b'arm64':
-            subprocess.Popen(['./astrond-arm', '--loglevel', 'info', 'config/astrond.yml'], shell=True)
-        elif platform == 'darwin':
-            subprocess.Popen(['./astrond', '--loglevel', 'info', 'config/astrond.yml'], shell=True)
+        if platform_module.machine() == 'arm64':
+            astrond_executable = './astrond-arm'
         else:
-            subprocess.Popen(['astrond', '--loglevel', 'info', 'config/astrond.yml'], creationflags=subprocess.CREATE_NEW_CONSOLE)
+            astrond_executable = 'astrond'
+        # Check if the config file exists and is readable
+        config_path = astron_dir / 'config' / 'astrond.yml'
+        # Run the astrond subprocess
+        if platform == 'win32':
+            subprocess.Popen([astrond_executable, '--loglevel', 'info', str(config_path)], creationflags=subprocess.CREATE_NEW_CONSOLE)
+        else:
+            subprocess.Popen([f'./{astrond_executable}', '--loglevel', 'info', str(config_path)])
 
         # uberdog
         # if we are on unix systems then chmod launch
@@ -232,16 +238,15 @@ class launcher(QMainWindow):
                             'config/common.prc',
                             'config/production.prc'],
                             creationflags=subprocess.CREATE_NEW_CONSOLE)
-        elif platform == 'darwin':
-                subprocess.Popen(['./launch',
+        else:
+            subprocess.Popen(['./launch',
                             '--base-channel', '1000000',
                             '--max-channels', '999999',
                             '--stateserver', '4002',
                             '--astron-ip', '127.0.0.1:7199',
                             '--eventlogger-ip', '127.0.0.1:7197',
                             'config/common.prc',
-                            'config/production.prc'],
-                            shell=True)
+                            'config/production.prc'])
 
         #AI
         chdir(self.gameDirectory / 'game')
@@ -257,7 +262,7 @@ class launcher(QMainWindow):
                             'config/common.prc',
                             'config/production.prc'],
                             creationflags=subprocess.CREATE_NEW_CONSOLE)
-        elif platform == 'darwin':
+        else:
             subprocess.Popen(['./launch',
                             '--base-channel', '401000000',
                             '--max-channels', '999999',
@@ -266,8 +271,7 @@ class launcher(QMainWindow):
                             '--eventlogger-ip', '127.0.0.1:7197',
                             '--district-name', 'Archipelago Avenue',
                             'config/common.prc',
-                            'config/production.prc'],
-                            shell=True)
+                            'config/production.prc'])
 
 
     # make the list of releases based on the https://github.com/toontown-archipelago/toontown-archipelago/releases API
