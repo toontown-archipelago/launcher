@@ -110,6 +110,23 @@ class launcher(QMainWindow):
         self.offset = None
         super().mouseReleaseEvent(event)
 
+    # on exit we should close any existing subprocesses
+    def closeEvent(self, event):
+        if platform == 'win32':
+            subprocess.run('taskkill /f /im astrond.exe')
+            subprocess.run('taskkill /f /im launch.exe')
+        else:
+            if platform_module.machine() == 'arm64':
+                subprocess.run(['pkill', 'astrond-arm'])
+                subprocess.run(['pkill', 'launch'])
+            else:
+                subprocess.run(['pkill', 'astrond'])
+                subprocess.run(['pkill', 'launch'])
+            
+
+        
+        
+
     def loadPrefs(self):
         try:
             with Path(GAME_DIRECTORY, 'prefs.json').open('r', encoding='utf-8') as file:
@@ -152,7 +169,7 @@ class launcher(QMainWindow):
     def startAll(self):
         self.hostServer()
         self.connectToServer()
-        
+
     def hostServer(self):
         # check if we downloaded the release we selected
         self.downloadRelease()
