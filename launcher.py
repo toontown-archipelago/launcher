@@ -95,18 +95,30 @@ class launcher(QMainWindow):
         self.subprocesses = []
         self.server_processes = {'uberdog': None, 'astron': None, 'AI': None}
         self.done_pre_run = False
+        # disable any buttons not implemented yet
+        # TODO: re enable these when their feature is implemented
+        self.ui.pushButton_runSettings.setEnabled(False)
+        self.ui.pushButton_runSettings.setVisible(False)
+        self.ui.pushButton_generateSeed.setEnabled(False)
+        self.ui.pushButton_generateSeed.setVisible(False)
+        self.ui.pushButton_Settings.setEnabled(False)
+        self.ui.pushButton_Settings.setVisible(False)
+        # allow the dragging of graphicsView to change the window position
+        self.ui.graphicsView.setMouseTracking(True)
+        self.ui.graphicsView.mousePressEvent = self.mousePressEvent
+        self.ui.graphicsView.mouseMoveEvent = self.mouseMoveEvent
+        self.ui.graphicsView.mouseReleaseEvent = self.mouseReleaseEvent
         # initialize a log file for the launcher itself
         # log directory is either the root or if on mac it will be in the the folder before / Resources
-        self.logDirectory = ROOT_DIRECTORY
+        self.launcherLogDirectory = ROOT_DIRECTORY
         if platform == 'darwin':
             # get the parent of the ROOT_DIRECTORY
             parent_dir = Path(ROOT_DIRECTORY).parent
             if (parent_dir / 'Resources').exists():
-                self.logDirectory = parent_dir / 'Resources'
-        self.logPath = Path(self.logDirectory + '/launcher.log')
-        with self.logPath.open('w', encoding='utf-8') as logfile:
+                self.launcherLogDirectory = parent_dir / 'Resources'
+        self.launcherLogPath = Path(self.launcherLogDirectory + '/launcher.log')
+        with self.launcherLogPath.open('w', encoding='utf-8') as logfile:
             logfile.write(f"Launcher started at {datetime.datetime.now().strftime('%Y-%m-%d %H:%M:%S')}\n")
-
 
     # events to allow dragging of window
 
@@ -143,7 +155,9 @@ class launcher(QMainWindow):
             with (GAME_DIRECTORY/'prefs.json').open('r', encoding='utf-8') as file:
                 prefs = json.load(file)
         except OSError:
-            print("preferences could not be loaded.\nIf this is the first time running, this can be ignored.")
+            with open(self.launcherLogPath, 'w') as file:
+                redirect_stdout(file)
+                print("preferences could not be loaded.\nIf this is the first time running, this can be ignored.")
             prefs = {}
         #adds default values if missing, otherwise does nothing.
         prefs['remember'] = prefs.get('remember', False)
@@ -356,11 +370,16 @@ class launcher(QMainWindow):
                           item['name'].endswith('.apworld')
                       ])
                      )
+        
         if len(assets) < 3:
-            print(f"Error trying to download {self.releaseSelected}: an asset is missing from the release")
+            with open(self.launcherLogPath, 'w') as log:
+                redirect_stdout(log)
+                print(f"Error trying to download {self.releaseSelected}: an asset is missing from the release")
             return
         elif len(assets) > 3:
-            print(f"Error trying to download {self.releaseSelected}: There are too many assets. (This probably shouldn't happen.)")
+            with open(self.launcherLogPath, 'w') as log:
+                redirect_stdout(log)
+                print(f"Error trying to download {self.releaseSelected}: There are too many assets. (This probably shouldn't happen.)")
             return
         self.updateProgress(0)
         self.download_thread = DownloadThread(assets, self.gameDirectory)
