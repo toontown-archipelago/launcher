@@ -24,11 +24,12 @@ jobs:
             - name: "Build launcher"
               run: |
                   python -m nuitka "launcher.py" --standalone --assume-yes-for-downloads --windows-console-mode='disable' --enable-plugins=pyside6 --windows-icon-from-ico=resources/icon.ico --output-dir=dist
-                  Copy-Item -Path "dist\launcher.dist" -Destination "dist" -Recurse
-                  Rename-Item -Path "dist\launcher.exe" -NewName "dist\Toontown Archipelago.exe"
+                  New-Item -ItemType Directory -Path "release"
+                  Copy-Item -Path "dist\launcher.dist" -Destination "release" -Recurse
+                  Rename-Item -Path "release\launcher.exe" -NewName "release\Toontown Archipelago.exe"
             - name: Compress Release
               run: |
-                    Compress-Archive -Path "dist\*" -DestinationPath "launcher_windows.zip"
+                    Compress-Archive -Path "release\*" -DestinationPath "launcher_windows.zip"
             - name: "Upload launcher artifact"
               uses: actions/upload-artifact@v4
               with:
