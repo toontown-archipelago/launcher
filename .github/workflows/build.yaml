@@ -69,7 +69,7 @@ jobs:
                   rm -rf dist/launcher.dist &&
                   rm -rf dist/launcher.build &&
                   rm -rf dist_x86_64/launcher.dist  &&
-                  rm -rf dist_x86_64/launcher.build &&
+                  rm -rf dist_x86_64/launcher.build
 
 
             - name: Compress Release
