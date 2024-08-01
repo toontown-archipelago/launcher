@@ -1,6 +1,7 @@
 # This Python file uses the following encoding: utf-8
-from sys import platform, argv, exit as sys_exit
-from contextlib import redirect_stdout
+import logging
+from sys import platform, argv, exit as sys_exit, executable
+import sys 
 import platform as platform_module
 from pathlib import Path
 from os import environ, chdir, path, pardir, curdir
@@ -33,7 +34,6 @@ if platform == 'darwin':
 else:
     ZIP_NAME = 'TTAP.zip'
 
-ROOT_DIRECTORY = curdir
 
 class DownloadThread(QThread):
     progress = Signal(int,str)
@@ -69,6 +69,10 @@ class DownloadThread(QThread):
 class launcher(QMainWindow):
     def __init__(self, parent=None):
         super().__init__(parent)
+        self.logger = None
+        self.setup_logging()
+        if self.logger:
+            self.logger.info("Launcher initialization started.")
         self.ui = Ui_launcher()
         self.ui.setupUi(self)
         self.ui.installprogressBar.setVisible(False)
@@ -109,12 +113,13 @@ class launcher(QMainWindow):
         self.ui.graphicsView.mousePressEvent = self.mousePressEvent
         self.ui.graphicsView.mouseMoveEvent = self.mouseMoveEvent
         self.ui.graphicsView.mouseReleaseEvent = self.mouseReleaseEvent
-        # initialize a log file for the launcher itself
-        # log directory is either the root or if on mac it will be in the the folder before / Resources
-        self.launcherLogDirectory = ROOT_DIRECTORY
-        self.launcherLogPath = Path(self.launcherLogDirectory + '/launcher.log')
-        with self.launcherLogPath.open('w', encoding='utf-8') as logfile:
-            logfile.write(f"Launcher started at {datetime.datetime.now().strftime('%Y-%m-%d %H:%M:%S')}\n")
+
+    def setup_logging(self):
+        log_directory = self.getLauncherLogDirectory()
+        log_path = Path(log_directory / 'launcher.log')
+        logging.basicConfig(filename=log_path, level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
+        self.logger = logging.getLogger(__name__)
+        self.logger.info(f"Launcher started at {datetime.datetime.now().strftime('%Y-%m-%d %H:%M:%S')}")
 
     # events to allow dragging of window
 
@@ -145,16 +150,23 @@ class launcher(QMainWindow):
         super().closeEvent(event)
 
 
-
+    def getLauncherLogDirectory(self):
+        if getattr(sys, 'frozen', False):
+            # Running in a bundle
+            return Path(sys.executable).parent
+        else:
+            # Running in a normal Python environment
+            return Path(__file__).parent
+        
     def loadPrefs(self):
         try:
             with (GAME_DIRECTORY/'prefs.json').open('r', encoding='utf-8') as file:
                 prefs = json.load(file)
         except OSError:
-            with open(self.launcherLogPath, 'w') as file:
-                redirect_stdout(file)
+                if self.logger:
+                    self.logger.exception("Preferences could not be loaded.")
                 print("preferences could not be loaded.\nIf this is the first time running, this can be ignored.")
-            prefs = {}
+        prefs = {}
         #adds default values if missing, otherwise does nothing.
         prefs['remember'] = prefs.get('remember', False)
         prefs['username'] = prefs.get('username', 'player1')
@@ -372,14 +384,14 @@ class launcher(QMainWindow):
                      )
         
         if len(assets) < 3:
-            with open(self.launcherLogPath, 'w') as log:
-                redirect_stdout(log)
-                print(f"Error trying to download {self.releaseSelected}: an asset is missing from the release")
+            if self.logger:
+                self.logger.exception(f"Error trying to download {self.releaseSelected}: an asset is missing from the release")
+            print(f"Error trying to download {self.releaseSelected}: an asset is missing from the release")
             return
         elif len(assets) > 3:
-            with open(self.launcherLogPath, 'w') as log:
-                redirect_stdout(log)
-                print(f"Error trying to download {self.releaseSelected}: There are too many assets. (This probably shouldn't happen.)")
+            if self.logger:
+                self.logger.exception(f"Error trying to download {self.releaseSelected}: There are too many assets. (This probably shouldn't happen.)")    
+            print(f"Error trying to download {self.releaseSelected}: There are too many assets. (This probably shouldn't happen.)")
             return
         self.updateProgress(0)
         self.download_thread = DownloadThread(assets, self.gameDirectory)
@@ -410,6 +422,5 @@ if __name__ == "__main__":
     try:
         app.exec()
     except Exception as e:
-        with widget.logPath.open('w', encoding='utf-8') as logfile:
-            logfile.write(str(e))
+        widget.logger.exception(f"Exception occured while running the launcher: {e}")
         sys_exit(1)
