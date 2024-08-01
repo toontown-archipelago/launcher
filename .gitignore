@@ -22,6 +22,8 @@ wheels/
 *.egg-info/
 .installed.cfg
 *.egg
+dist/
+dist_x86_64/
 
 # PyQt specific
 *.pro.user
@@ -59,3 +61,4 @@ coverage.xml
 .qtcreator/
 *.user
 *.log
+*.xml

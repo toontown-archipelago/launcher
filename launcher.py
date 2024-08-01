@@ -3,7 +3,7 @@ from sys import platform, argv, exit as sys_exit
 from contextlib import redirect_stdout
 import platform as platform_module
 from pathlib import Path
-from os import environ, chdir, path, pardir
+from os import environ, chdir, path, pardir, curdir
 from itertools import count
 import zipfile
 import io
@@ -33,7 +33,7 @@ if platform == 'darwin':
 else:
     ZIP_NAME = 'TTAP.zip'
 
-ROOT_DIRECTORY = path.dirname(path.abspath(__file__))
+ROOT_DIRECTORY = curdir
 
 class DownloadThread(QThread):
     progress = Signal(int,str)
@@ -112,11 +112,6 @@ class launcher(QMainWindow):
         # initialize a log file for the launcher itself
         # log directory is either the root or if on mac it will be in the the folder before / Resources
         self.launcherLogDirectory = ROOT_DIRECTORY
-        if platform == 'darwin':
-            # get the parent of the ROOT_DIRECTORY
-            parent_dir = Path(ROOT_DIRECTORY).parent
-            if (parent_dir / 'Resources').exists():
-                self.launcherLogDirectory = parent_dir / 'Resources'
         self.launcherLogPath = Path(self.launcherLogDirectory + '/launcher.log')
         with self.launcherLogPath.open('w', encoding='utf-8') as logfile:
             logfile.write(f"Launcher started at {datetime.datetime.now().strftime('%Y-%m-%d %H:%M:%S')}\n")
