@@ -1,0 +1,94 @@
+name: "Build launcher"
+on:
+    release:
+        types: [published]
+jobs:
+    build-launcher:
+        runs-on: windows-latest
+        permissions:
+            contents: write
+        defaults:
+            run:
+                shell: powershell
+        steps:
+            - name: "Checkout"
+              uses: actions/checkout@v4
+            - name: "Set up Python"
+              uses: actions/setup-python@v4
+              with:
+                  python-version: "3.11"
+            - name: "Install dependencies"
+              run: |
+                  python -m pip install nuitka
+                  python -m pip install -r requirements.txt
+            - name: "Build launcher"
+              run: |
+                  Start-Process -FilePath "build/build-windows.bat" -Wait
+                  # rename to Toontown Archipelago.exe
+                    Rename-Item -Path "dist\launcher.exe" -NewName "dist\Toontown Archipelago.exe"
+            - name: Compress Release
+              run: |
+                    Compress-Archive -Path "dist\*" -DestinationPath "launcher_windows.zip"
+            - name: "Upload launcher artifact"
+              uses: actions/upload-artifact@v4
+              with:
+                name: "launcher_windows.zip"
+                path: "launcher_windows.zip"
+                if-no-files-found: "error"
+            - name: "Upload Launcher to Release"
+              env:
+                  GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+              run: |
+                    gh release upload {GITHUB_REF} launcher.zip
+# macos
+    build-launcher-macos:
+        runs-on: macos-latest
+        permissions:
+            contents: write
+        defaults:
+            run:
+                shell: bash
+        steps:
+            - name: "Checkout"
+              uses: actions/checkout@v4
+            - name: "Install Universal Python 3.11.4"
+              run: >
+                    curl https://www.python.org/ftp/python/3.11.4/python-3.11.4-macos11.pkg -o python-3.11.4-macos11.pkg &&
+                    sudo installer -verbose -pkg python-3.11.4-macos11.pkg -target /
+            - name: "Install dependencies"
+              run: |
+                  python -m pip install nuitka
+                  python -m pip install -r requirements.txt
+            - name: "Build launcher"
+              run: >
+                  alias python3=python3.11 &&
+                  bash build/build-macos.sh
+                  # rename app to Toontown Archipelago.app
+                    mv dist/launcher.app dist/Toontown\ Archipelago.app
+                    mv dist_x86_64/launcher.app dist_x86_64/Toontown\ Archipelago.app
+
+
+            - name: Compress Release
+              run: |
+                    # make into a dmg file
+                    hdiutil create -volname "launcher" -srcfolder "dist" -ov -format UDZO "launcher_arm64.dmg"
+                    hdiutil create -volname "launcher" -srcfolder "dist_x86_64" -ov -format UDZO "launcher_x86_64.dmg"
+            - name: "Upload launcher artifact arm64"
+              uses: actions/upload-artifact@v4
+              with:
+                name: "launcher_arm64.dmg"
+                path: "launcher_arm64.dmg"
+                if-no-files-found: "error"
+            - name: "Upload launcher artifact x86_64"
+              uses: actions/upload-artifact@v4
+              with:
+                    name: "launcher_x86_64.dmg"
+                    path: "launcher_x86_64.dmg"
+                    if-no-files-found: "error"
+            - name: "Upload Launcher to Release"
+              env:
+                    GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+              run: |
+                        gh release upload {GITHUB_REF} launcher_arm64.dmg
+                        gh release upload {GITHUB_REF} launcher_x86_64.dmg
+
