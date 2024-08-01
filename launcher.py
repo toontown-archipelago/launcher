@@ -1,15 +1,15 @@
 # This Python file uses the following encoding: utf-8
 import logging
-from sys import platform, argv, exit as sys_exit, executable
-import sys 
-import platform as platform_module
+import sys
+import platform
 from pathlib import Path
-from os import environ, chdir, path, pardir, curdir
+from os import environ, chdir
 from itertools import count
+import traceback
 import zipfile
 import io
 import datetime
-import time
+# import time # this is and has been an unused import every time I've seen it in here.
 # import multiprocessing
 import stat
 import subprocess
@@ -29,11 +29,10 @@ from ui_form import Ui_launcher
 import resources_rc
 
 GAME_DIRECTORY = Path(QStandardPaths.writableLocation(QStandardPaths.AppLocalDataLocation), 'Toontown Archipelago')
-if platform == 'darwin':
+if sys.platform == 'darwin':
     ZIP_NAME = 'TTAP-macos.zip'
 else:
     ZIP_NAME = 'TTAP.zip'
-
 
 class DownloadThread(QThread):
     progress = Signal(int,str)
@@ -109,35 +108,23 @@ class launcher(QMainWindow):
         self.ui.pushButton_Settings.setEnabled(False)
         self.ui.pushButton_Settings.setVisible(False)
         # allow the dragging of graphicsView to change the window position
-        self.ui.graphicsView.setMouseTracking(True)
         self.ui.graphicsView.mousePressEvent = self.mousePressEvent
         self.ui.graphicsView.mouseMoveEvent = self.mouseMoveEvent
-        self.ui.graphicsView.mouseReleaseEvent = self.mouseReleaseEvent
 
     def setup_logging(self):
         log_directory = self.getLauncherLogDirectory()
         log_path = Path(log_directory / 'launcher.log')
         logging.basicConfig(filename=log_path, level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
         self.logger = logging.getLogger(__name__)
-        self.logger.info(f"Launcher started at {datetime.datetime.now().strftime('%Y-%m-%d %H:%M:%S')}")
+        self.logger.info("Launcher started at %s", datetime.datetime.now().strftime('%Y-%m-%d %H:%M:%S'))
 
     # events to allow dragging of window
-
     def mousePressEvent(self, event):
-        if event.button() == Qt.LeftButton:
-            self.offset = event.pos()
-        else:
-            super().mousePressEvent(event)
+        self.offset = event.position()
+
 
     def mouseMoveEvent(self, event):
-        if self.offset is not None and event.buttons() == Qt.LeftButton:
-            self.move(self.pos() + event.pos() - self.offset)
-        else:
-            super().mouseMoveEvent(event)
-
-    def mouseReleaseEvent(self, event):
-        self.offset = None
-        super().mouseReleaseEvent(event)
+        self.move((event.globalPosition() - self.offset).toPoint())
 
     # on exit we should close any existing subprocesses
     def closeEvent(self, event):
@@ -153,19 +140,17 @@ class launcher(QMainWindow):
     def getLauncherLogDirectory(self):
         if getattr(sys, 'frozen', False):
             # Running in a bundle
-            return Path(sys.executable).parent
+            return Path(sys.executable).resolve().parent
         else:
             # Running in a normal Python environment
-            return Path(__file__).parent
-        
+            return Path(__file__).resolve().parent
+
     def loadPrefs(self):
         try:
             with (GAME_DIRECTORY/'prefs.json').open('r', encoding='utf-8') as file:
                 prefs = json.load(file)
         except OSError:
-                if self.logger:
-                    self.logger.exception("Preferences could not be loaded.")
-                print("preferences could not be loaded.\nIf this is the first time running, this can be ignored.")
+            self.logger.exception("Preferences could not be loaded. - If this is the first time running, this can be ignored.")
         prefs = {}
         #adds default values if missing, otherwise does nothing.
         prefs['remember'] = prefs.get('remember', False)
@@ -201,7 +186,7 @@ class launcher(QMainWindow):
 
 
     def preRun(self):
-        #if we've already done this since the last time the version was changed, there's no need.
+        # if we've already done this since the last time the version was changed, there's no need.
         if self.done_pre_run:
             return
         # ensure we've downloaded the selected release.
@@ -209,8 +194,11 @@ class launcher(QMainWindow):
         # use callback to notify us when the download is complete to execute the rest of the code
         if self.download_thread:
             self.download_thread.finished.connect(self.preSetup)
-            return
-      
+        # cleanup any log files that are older than 2 days.
+        for file in (f for f in (self.gameDirectory/'log').glob('*.log')
+                    if f.stat().st_mtime < (datetime.datetime.now() - datetime.timedelta(days=2)).timestamp()):
+            file.unlink()
+
     def preSetup(self):
         # macos folder structure didn't match windows, at least up to v0.10.4, ensure compatibility with those versions.
         if (self.gameDirectory/'release').exists():
@@ -218,7 +206,7 @@ class launcher(QMainWindow):
                 file.rename(self.gameDirectory/file.name)
             (self.gameDirectory/'release').rmdir()
         # ensure launch has execute permissions for platforms other than windows.
-        if platform != 'win32':
+        if sys.platform != 'win32':
             modes = (self.gameDirectory/'game'/'launch').stat().st_mode
             if not modes & stat.S_IXUSR:
                 (self.gameDirectory/'game'/'launch').chmod(modes | stat.S_IXUSR)
@@ -229,7 +217,6 @@ class launcher(QMainWindow):
                     file.chmod(modes | stat.S_IXUSR)
         # ensure the log directory exists.
         (self.gameDirectory/'log').mkdir(exist_ok=True)
-        # TODO: setup cleaning log files out, delete older than 24 hours, probably.
         self.done_pre_run = True
 
     def startAll(self):
@@ -246,11 +233,11 @@ class launcher(QMainWindow):
         chdir(self.gameDirectory/'game')
         launchFile = self.gameDirectory/'game'/'launch'
         with (self.gameDirectory/'log'/f'client-{datetime.datetime.now().strftime("%Y%m%d-%H%M%S")}.log').open('w', encoding='utf-8') as logfile:
-            if platform == 'darwin':
+            if sys.platform == 'darwin':
                 p = subprocess.Popen([ launchFile ], stdout=logfile, stderr=subprocess.STDOUT)
-            elif platform == 'win32':
+            elif sys.platform == 'win32':
                 p = subprocess.Popen([ launchFile ], creationflags=subprocess.CREATE_NO_WINDOW, stdout=logfile, stderr=subprocess.STDOUT)
-            elif platform.startswith('linux'):
+            elif sys.platform.startswith('linux'):
                 # use wine
                 p = subprocess.Popen([ 'wine', launchFile ], stdout=logfile, stderr=subprocess.STDOUT)
         return p
@@ -294,12 +281,12 @@ class launcher(QMainWindow):
         # Run the astrond subprocess
         # macos has a different astrond for arm64
         # check for the arm64 architecture using uname
-        if platform_module.machine() == 'arm64':
+        if platform.machine() == 'arm64':
             astrond_executable = self.gameDirectory/'game'/'astron'/'astrond-arm'
         else:
             astrond_executable = self.gameDirectory/'game'/'astron'/'astrond'
         with (self.gameDirectory/'log'/f'astrond-{datetime.datetime.now().strftime("%Y%m%d-%H%M%S")}.log').open('w', encoding='utf-8') as logfile:
-            if platform == 'win32':
+            if sys.platform == 'win32':
                 p = subprocess.Popen([astrond_executable, '--loglevel', 'info', str(config_path)], creationflags=subprocess.CREATE_NO_WINDOW, stdout=logfile, stderr=subprocess.STDOUT)
             else:
                 p = subprocess.Popen([astrond_executable, '--loglevel', 'info', str(config_path)], stdout=logfile, stderr=subprocess.STDOUT)
@@ -320,7 +307,7 @@ class launcher(QMainWindow):
         else:
             raise ValueError(f"Unknown TTAP Service: {service}")
         with (self.gameDirectory/'log'/f'{service}-{datetime.datetime.now().strftime("%Y%m%d-%H%M%S")}.log').open('w', encoding='utf-8') as logfile:
-            if platform == 'win32':
+            if sys.platform == 'win32':
                 p = subprocess.Popen(['launch',
                                     '--base-channel', base_channel,
                                     '--max-channels', '999999',
@@ -384,13 +371,9 @@ class launcher(QMainWindow):
                      )
         
         if len(assets) < 3:
-            if self.logger:
-                self.logger.exception(f"Error trying to download {self.releaseSelected}: an asset is missing from the release")
             print(f"Error trying to download {self.releaseSelected}: an asset is missing from the release")
             return
         elif len(assets) > 3:
-            if self.logger:
-                self.logger.exception(f"Error trying to download {self.releaseSelected}: There are too many assets. (This probably shouldn't happen.)")    
             print(f"Error trying to download {self.releaseSelected}: There are too many assets. (This probably shouldn't happen.)")
             return
         self.updateProgress(0)
@@ -408,19 +391,25 @@ class launcher(QMainWindow):
         self.ui.installprogressBar.setValue(value)
 
     def onDownloadFinished(self):
-        self.ui.downloadLabel.setText(f"Download complete.")
+        self.ui.downloadLabel.setText("Download complete.")
         self.ui.installprogressBar.setVisible(False)
 
-
-
-
-if __name__ == "__main__":
-    app = QApplication(argv)
-    widget = launcher()
-    widget.show()
+def main():
     # write to log file on crash
+    app = QApplication(sys.argv)
     try:
+        widget = launcher()
+        widget.show()
         app.exec()
     except Exception as e:
-        widget.logger.exception(f"Exception occured while running the launcher: {e}")
-        sys_exit(1)
+        try:
+            widget.logger.exception(f"Exception occured while running the launcher: {'\n'.split(traceback.format_exception(e))}")
+        except Exception as e2:
+            print("An exception occured while handling an Exception - Logging was likely not initialized yet.")
+            print("The original exception is as follows:")
+            traceback.print_exception(e)
+            raise e2
+        raise e
+
+if __name__ == "__main__":
+    main()
