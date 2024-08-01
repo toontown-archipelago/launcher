@@ -26,7 +26,6 @@ jobs:
                   python -m nuitka "launcher.py" --standalone --assume-yes-for-downloads --windows-console-mode='disable' --enable-plugins=pyside6 --windows-icon-from-ico=resources/icon.ico --output-dir=dist
                    New-Item -Name "release" -ItemType "directory"
                    Copy-Item -Path "dist\launcher.dist" -Destination "release" -Recurse
-                   Rename-Item -Path "release\launcher.exe" -NewName "Toontown Archipelago.exe"
 
             - name: Compress Release
               run: |
@@ -66,7 +65,11 @@ jobs:
                   alias python3=python3.11 &&
                   bash ./build/build-mac.sh &&
                   mv dist/launcher.app dist/Toontown\ Archipelago.app &&
-                  mv dist_x86_64/launcher.app dist_x86_64/Toontown\ Archipelago.app
+                  mv dist_x86_64/launcher.app dist_x86_64/Toontown\ Archipelago.app &&
+                  rm -rf dist/launcher.dist &&
+                  rm -rf dist/launcher.build &&
+                  rm -rf dist_x86_64/launcher.dist  &&
+                  rm -rf dist_x86_64/launcher.build &&
 
 
             - name: Compress Release
