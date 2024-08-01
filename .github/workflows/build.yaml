@@ -23,12 +23,13 @@ jobs:
                   python -m pip install -r requirements.txt
             - name: "Build launcher"
               run: |
-                  Start-Process -FilePath "./build/build-windows.bat" -Wait
-                  # rename to Toontown Archipelago.exe
-                  Rename-Item -Path "dist\launcher.exe" -NewName "dist\Toontown Archipelago.exe"
+                  python -m nuitka "launcher.py" --standalone --assume-yes-for-downloads --windows-console-mode='disable' --enable-plugins=pyside6 --windows-icon-from-ico=resources/icon.ico --output-dir=dist
+                   New-Item -Name "release" -ItemType "directory"
+                   Copy-Item -Path "dist\launcher.dist" -Destination "release" -Recurse
+
             - name: Compress Release
               run: |
-                    Compress-Archive -Path "dist\*" -DestinationPath "launcher_windows.zip"
+                    Compress-Archive -Path "release\*" -DestinationPath "launcher_windows.zip"
             - name: "Upload launcher artifact"
               uses: actions/upload-artifact@v4
               with:
@@ -62,15 +63,17 @@ jobs:
             - name: "Build launcher"
               run: >
                   alias python3=python3.11 &&
-                  bash ./build/build-macos.sh &&
-                  # rename app to Toontown Archipelago.app
+                  bash ./build/build-mac.sh &&
                   mv dist/launcher.app dist/Toontown\ Archipelago.app &&
-                  mv dist_x86_64/launcher.app dist_x86_64/Toontown\ Archipelago.app
+                  mv dist_x86_64/launcher.app dist_x86_64/Toontown\ Archipelago.app &&
+                  rm -rf dist/launcher.dist &&
+                  rm -rf dist/launcher.build &&
+                  rm -rf dist_x86_64/launcher.dist  &&
+                  rm -rf dist_x86_64/launcher.build
 
 
             - name: Compress Release
               run: >
-                    # make into a dmg file
                     hdiutil create -volname "launcher" -srcfolder "dist" -ov -format UDZO "launcher_arm64.dmg" &&
                     hdiutil create -volname "launcher" -srcfolder "dist_x86_64" -ov -format UDZO "launcher_x86_64.dmg"
             - name: "Upload launcher artifact arm64"
@@ -87,8 +90,8 @@ jobs:
                     if-no-files-found: "error"
             - name: "Upload Launcher to Release"
               env:
-                    GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+                 GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
               run: |
-                        gh release upload {GITHUB_REF} launcher_arm64.dmg
-                        gh release upload {GITHUB_REF} launcher_x86_64.dmg
+                 gh release upload {GITHUB_REF} launcher_arm64.dmg
+                 gh release upload {GITHUB_REF} launcher_x86_64.dmg
 

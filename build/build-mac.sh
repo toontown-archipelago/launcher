@@ -16,3 +16,4 @@ nuitka --standalone   --assume-yes-for-downloads --output-dir=dist  --enable-plu
 nuitka --standalone   --assume-yes-for-downloads  --output-dir=dist_x86_64 --enable-plugins=pyside6 --macos-target-arch=x86_64 --macos-create-app-bundle --macos-app-icon=resources/icon.icns  launcher.py
 
 codesign --deep --force --sign - dist/launcher.app
+codesign --deep --force --sign - dist_x86_64/launcher.app
