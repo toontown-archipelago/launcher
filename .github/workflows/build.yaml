@@ -24,9 +24,10 @@ jobs:
             - name: "Build launcher"
               run: |
                   python -m nuitka "launcher.py" --standalone --assume-yes-for-downloads --windows-console-mode='disable' --enable-plugins=pyside6 --windows-icon-from-ico=resources/icon.ico --output-dir=dist
-                  New-Item -ItemType Directory -Path "release"
-                  Copy-Item -Path "dist\launcher.dist" -Destination "release" -Recurse
-                  Rename-Item -Path "release\launcher.exe" -NewName "release\Toontown Archipelago.exe"
+                   New-Item -Name "release" -ItemType "directory"
+                   Copy-Item -Path "dist\launcher.dist" -Destination "release" -Recurse
+                   Rename-Item -Path "release\launcher.exe" -NewName "Toontown Archipelago.exe"
+
             - name: Compress Release
               run: |
                     Compress-Archive -Path "release\*" -DestinationPath "launcher_windows.zip"
