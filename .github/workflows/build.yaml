@@ -70,8 +70,8 @@ jobs:
 
             - name: Compress Release
               run: >
-                    hdiutil create -volname "launcher" -srcfolder "dist/Toontown\ Archipelago.app" -ov -format UDZO "launcher_arm64.dmg" &&
-                    hdiutil create -volname "launcher" -srcfolder "dist_x86_64/Toontown\ Archipelago.app" -ov -format UDZO "launcher_x86_64.dmg"
+                    hdiutil create -volname "launcher" -srcfolder "dist" -ov -format UDZO "launcher_arm64.dmg" &&
+                    hdiutil create -volname "launcher" -srcfolder "dist_x86_64" -ov -format UDZO "launcher_x86_64.dmg"
             - name: "Upload launcher artifact arm64"
               uses: actions/upload-artifact@v4
               with:
