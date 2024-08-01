@@ -403,7 +403,8 @@ def main():
         app.exec()
     except Exception as e:
         try:
-            widget.logger.exception(f"Exception occured while running the launcher: {'\n'.split(traceback.format_exception(e))}")
+            formatted_exception = '\n'.join(traceback.format_exception(e))
+            widget.logger.exception(f"Exception occurred while running the launcher: {formatted_exception}")
         except Exception as e2:
             print("An exception occured while handling an Exception - Logging was likely not initialized yet.")
             print("The original exception is as follows:")
