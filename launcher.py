@@ -16,7 +16,7 @@ import subprocess
 # import threading
 import json
 import requests
-from PySide6.QtWidgets import QApplication, QMainWindow
+from PySide6.QtWidgets import QApplication, QMainWindow, QFileDialog, QMessageBox
 from PySide6.QtCore import Qt
 # from PySide6.QtCore import QPoint
 from PySide6.QtCore import QThread, Signal
@@ -65,6 +65,33 @@ class DownloadThread(QThread):
             with (self.gameDirectory/asset.get('name')).open('wb') as file:
                 file.write(response.content)
 
+class GenerationThread(QThread):
+    # thread to handle generation of the seed via archipelago
+    progress = Signal(int, str)
+    finished = Signal()
+
+    def __init__(self, gameDirectory):
+        super().__init__()
+        self.gameDirectory = gameDirectory
+
+    def run(self):
+        self.generateSeed()
+        self.finished.emit()
+    
+    def generateSeed(self):
+        # TODO figure out a way to indiciate progress on the generation based on the output of the Generate.py file
+        # run the Generate.py file
+        chdir(self.gameDirectory / "archipelago")
+        with (self.gameDirectory/'log'/f'generation-{datetime.datetime.now().strftime("%Y%m%d-%H%M%S")}.log').open('w', encoding='utf-8') as logfile:
+            if sys.platform == 'win32':
+                p = subprocess.Popen(['python', 'Generate.py'], creationflags=subprocess.CREATE_NO_WINDOW, stdout=logfile, stderr=subprocess.STDOUT)
+            else:
+                p = subprocess.Popen(['python', 'Generate.py'], stdout=logfile, stderr=subprocess.STDOUT)
+        # wait for the process to finish
+        
+        p.wait()
+    
+
 class launcher(QMainWindow):
     def __init__(self, parent=None):
         super().__init__(parent)
@@ -101,15 +128,167 @@ class launcher(QMainWindow):
         self.done_pre_run = False
         # disable any buttons not implemented yet
         # TODO: re enable these when their feature is implemented
-        self.ui.pushButton_runSettings.setEnabled(False)
-        self.ui.pushButton_runSettings.setVisible(False)
-        self.ui.pushButton_generateSeed.setEnabled(False)
-        self.ui.pushButton_generateSeed.setVisible(False)
+        self.ui.pushButton_runSettings.clicked.connect(self.openRunSettings)
+        self.ui.pushButton_generateSeed.clicked.connect(self.generateSeed)
+        # self.ui.pushButton_generateSeed.setEnabled(False)
+        # self.ui.pushButton_generateSeed.setVisible(False)
         self.ui.pushButton_Settings.setEnabled(False)
         self.ui.pushButton_Settings.setVisible(False)
         # allow the dragging of graphicsView to change the window position
         self.ui.graphicsView.mousePressEvent = self.mousePressEvent
         self.ui.graphicsView.mouseMoveEvent = self.mouseMoveEvent
+
+    def generateSeed(self):
+        # first we have to check if the archipelago in the tt archipelago folder exists
+        # if it doesn't we have to download it
+        archipelago_dir = GAME_DIRECTORY / "archipelago"
+        if not archipelago_dir.exists():
+            # download the archipelago
+            self.downloadArchipelago()
+            if self.download_thread:
+                self.download_thread.finished.connect(self.generateSeed)
+            return
+         # now that we have the folder,move the apworld file from the version folder to the archipelago custom_worlds folder (if custom_worlds doesn't exist create it)
+        apworld_file = self.gameDirectory / "toontown.apworld"
+        output_apworld_dir = archipelago_dir / "custom_worlds"
+        if not output_apworld_dir.exists():
+            output_apworld_dir.mkdir()
+        apworld_file.rename(output_apworld_dir / "toontown.apworld")
+        # now open a filedialog so the user can choose multiple yaml files to put in the players directory to use for generation
+        # by default open this in GAME DIRECTORY which houses the example yaml
+
+        yaml_files, _ = QFileDialog.getOpenFileNames(self, "Select the yaml files to use for generation", str(self.gameDirectory), "YAML files (*.yaml)")
+        if not yaml_files:
+            return
+        # move the yaml files to the players directory
+        players_dir = archipelago_dir / "Players"
+        if not players_dir.exists():
+            players_dir.mkdir()
+        for file in yaml_files:
+            Path(file).rename(players_dir / Path(file).name)
+        # now we can run the generation thread, which will run  Generate.py
+        # when the generation thread finishes we will ask the player with a message box if they want to move the output file to somewhere else
+        # if they do we will open a file dialog to allow them to choose the location
+        # if they don't we will just show a message box with the location of the output file
+        self.generation_thread = GenerationThread(archipelago_dir)
+        self.generation_thread.progress.connect(self.updateProgressGeneration)
+        self.generation_thread.finished.connect(self.onGenerationFinished)
+
+    def updateProgressGeneration(self, value):
+        self.ui.downloadLabel.setText("Generating seed...")
+        self.ui.installprogressBar.setVisible(True)
+        self.ui.installprogressBar.setValue(value)
+
+    def onGenerationFinished(self):
+        self.ui.downloadLabel.setText("Generation finished.")
+        self.ui.installprogressBar.setVisible(False)
+        # ask the user if they want to move the output file in the output folder (output is a zip file)
+        # output file is a AP_ + a random number, so we need to find the latest modified .zip file
+        output_dir = GAME_DIRECTORY / "archipelago" / "output"
+        output_files = list(GAME_DIRECTORY / "archipelago" / "output").glob("*.zip")
+        output_file = max(output_files, key=lambda x: x.stat().st_mtime)
+        response = QMessageBox.question(self, "Move output file?", "Do you want to move the output file?", QMessageBox.Yes | QMessageBox.No)
+        if response == QMessageBox.Yes:
+            # output file is
+           
+            file_path, _ = QFileDialog.getSaveFileName(self, "Save the output file", str(output_dir), "ZIP files (*.zip)")
+            if file_path:
+                output_file.rename(file_path)
+            else:
+                QMessageBox.information(self, "Output file location", f"The output file is located at {output_file}")
+        else:
+            QMessageBox.information(self, "Output file location", f"The output file is located at {output_file}")
+
+
+        
+    def downloadArchipelago(self):
+        # download the latest stable version of the source code from the github repo
+        url = "https://api.github.com/repos/ArchipelagoMW/Archipelago/releases"
+        response = requests.get(url)
+        data = response.json()
+        latest_release = None 
+        if isinstance(data, dict) and 'assets' in data:
+            latest_release = data
+        else:
+            latest_release = None
+            for release in data:
+                if not release.get('prerelease', False):
+                    latest_release = release
+                    break
+        if latest_release is None:
+            print("No stable release found")
+            return
+        # Get the URL for the source code zip file
+        zip_url = latest_release['zipball_url']
+        # Download the zip file
+        zip_response = requests.get(zip_url)
+        # will be returned as a zip file not a json
+        assets = [{'name': 'archipelago.zip', 'browser_download_url': zip_url}]
+        # TODO rename extracted directory (archipelago-randomhash) to archipelago
+        # start the download thread
+        self.download_thread = DownloadThread(assets, GAME_DIRECTORY)
+        self.download_thread.progress.connect(self.updateProgressArchipelago)
+        self.download_thread.finished.connect(self.onDownloadFinished)
+        self.download_thread.start()
+        # on the download thread finishing, we need to install the requirements from requirements.txt
+
+        if self.download_thread:
+            # wait for it to finish
+            self.download_thread.finished.connect(self.installArchipelago)
+
+    def getReleasesArchipelago(self):
+        url = "https://api.github.com/repos/ArchipelagoMW/Archipelago/releases"
+        releases = {}
+        query = {'per_page': 100}
+        for i in count(1):
+            query['page'] = i
+            response = requests.get(url, query, timeout=10)
+            data = response.json()
+            if not data:
+                break
+            for release in data:
+                assets = release.get('assets', [])
+                if any(item.get('name') == ZIP_NAME for item in assets):
+                    releases.update({release.get('tag_name'): release})
+        return releases
+    
+    def installArchipelago(self):
+        # remaining cmd to finish up preperations
+        # pip install -r requirements.txt
+        # tell the user we are installing dependencies for archipelago via the download Label
+        # rename the extracted directory to archipelago
+        
+        self.ui.downloadLabel.setText("Installing dependencies for Archipelago...")
+        # install the requirements
+        chdir(GAME_DIRECTORY / "archipelago")
+        with (GAME_DIRECTORY/'log'/f'archipelago-{datetime.datetime.now().strftime("%Y%m%d-%H%M%S")}.log').open('w', encoding='utf-8') as logfile:
+            if sys.platform == 'win32':
+                p = subprocess.Popen(['pip', 'install', '-r', 'requirements.txt'], creationflags=subprocess.CREATE_NO_WINDOW, stdout=logfile, stderr=subprocess.STDOUT)
+            else:
+                p = subprocess.Popen(['pip', 'install', '-r', 'requirements.txt'], stdout=logfile, stderr=subprocess.STDOUT)
+        p.wait()
+        # tell the user we are done installing dependencies
+        self.ui.downloadLabel.setText("Dependencies installed.")
+        # now make the downloadLabel invisible
+        self.ui.downloadLabel.setVisible(False)
+    def openRunSettings(self):
+        # this will open the EXAMPLE_TOONTOWN.yaml file located in game directory
+        # if it doesn't exist we download it 
+        # and then open it with the default text editor
+        yamlFile = self.gameDirectory/'EXAMPLE_TOONTOWN.yaml'
+        if not yamlFile.exists():
+            # download the file via prerun
+            self.preRun()
+        # now open the file with the default text editor
+        # TODO wait for the download to finish before opening the file
+        if sys.platform == 'win32':
+            subprocess.Popen([yamlFile], creationflags=subprocess.CREATE_NO_WINDOW)
+        elif sys.platform == 'darwin':  # macOS
+            subprocess.Popen(['open', str(yamlFile)], stderr=subprocess.STDOUT)
+        else:
+            subprocess.Popen([str(yamlFile)], stderr=subprocess.STDOUT)
+
+        
 
     def setup_logging(self):
         log_directory = self.getLauncherLogDirectory()
@@ -390,10 +569,16 @@ class launcher(QMainWindow):
         self.ui.installprogressBar.setVisible(True)
         self.ui.installprogressBar.setValue(value)
 
+    def updateProgressArchipelago(self, value, asset_name='archipelago'):
+        self.ui.downloadLabel.setVisible(True)
+        self.ui.downloadLabel.setText(f"Downloading {asset_name}...")
+        self.ui.installprogressBar.setVisible(True)
+        self.ui.installprogressBar.setValue(value)
+
     def onDownloadFinished(self):
         self.ui.downloadLabel.setText("Download complete.")
         self.ui.installprogressBar.setVisible(False)
-
+        
 def main():
     # write to log file on crash
     app = QApplication(sys.argv)
