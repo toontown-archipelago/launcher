@@ -3,7 +3,7 @@ import logging
 import sys
 import platform
 from pathlib import Path
-from os import environ, chdir
+from os import environ, chdir, path, makedirs
 from itertools import count
 import traceback
 import zipfile
@@ -186,6 +186,9 @@ class launcher(QMainWindow):
 
 
     def preRun(self):
+         # create the GAME DIRECTORY folder if it doesn't exist
+        if not path.exists(GAME_DIRECTORY):
+            makedirs(GAME_DIRECTORY)
         # if we've already done this since the last time the version was changed, there's no need.
         if self.done_pre_run:
             return
