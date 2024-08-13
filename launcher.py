@@ -47,7 +47,7 @@ class DownloadThread(QThread):
         self.finished.emit()
 
     def download_files(self, assets):
-        self.gameDirectory.mkdir(exist_ok=True) #ensure directory exists, game isn't necessarily the first.
+        self.gameDirectory.mkdir(exist_ok=True, parents=True) #ensure directory exists, game isn't necessarily the first.
         for k,v in enumerate(assets):
             self.progress.emit(int(k/len(assets)*100), v.get('name'))
             self.downloadFile(v)
@@ -186,9 +186,6 @@ class launcher(QMainWindow):
 
 
     def preRun(self):
-         # create the GAME DIRECTORY folder if it doesn't exist
-        if not path.exists(GAME_DIRECTORY):
-            makedirs(GAME_DIRECTORY)
         # if we've already done this since the last time the version was changed, there's no need.
         if self.done_pre_run:
             return
@@ -219,7 +216,7 @@ class launcher(QMainWindow):
                 if not modes & stat.S_IXUSR:
                     file.chmod(modes | stat.S_IXUSR)
         # ensure the log directory exists.
-        (self.gameDirectory/'log').mkdir(exist_ok=True)
+        (self.gameDirectory/'log').mkdir(exist_ok=True, parents=True)
         self.done_pre_run = True
 
     def startAll(self):
