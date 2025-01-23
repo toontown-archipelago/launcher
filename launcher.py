@@ -287,7 +287,11 @@ class launcher(QMainWindow):
             astrond_executable = self.gameDirectory/'game'/'astron'/'astrond'
         with (self.gameDirectory/'log'/f'astrond-{datetime.datetime.now().strftime("%Y%m%d-%H%M%S")}.log').open('w', encoding='utf-8') as logfile:
             if sys.platform == 'win32':
-                p = subprocess.Popen([astrond_executable, '--loglevel', 'info', str(config_path)], creationflags=subprocess.CREATE_NO_WINDOW, stdout=logfile, stderr=subprocess.STDOUT)
+                try:
+                    p = subprocess.Popen([astrond_executable, '--loglevel', 'info', str(config_path)], creationflags=subprocess.CREATE_NO_WINDOW, stdout=logfile, stderr=subprocess.STDOUT)
+                except OSError:
+                    # open the start_server_astron.bat executable with no window
+                    p = subprocess.Popen([self.gameDirectory/"start_server_astron.bat"], creationflags=subprocess.CREATE_NO_WINDOW, stdout=logfile, stderr=subprocess.STDOUT)
             else:
                 p = subprocess.Popen([astrond_executable, '--loglevel', 'info', str(config_path)], stdout=logfile, stderr=subprocess.STDOUT)
         return p
